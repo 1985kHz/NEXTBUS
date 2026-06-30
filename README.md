@@ -17,6 +17,7 @@ The official Keikyu Bus website and transit apps require multiple taps and page 
 A lightweight bus timetable web app for the Keikyu Bus stops between YRP Nobi Station and Tsuushin Kenkyujo, including Hikari-no-oka 2-ban.
 
 **Upcoming mode** — Displays the next three departures (Next / Following / Later) with destination and minutes until arrival, updated in real time.
+
 **Timetable mode** — Plots all departures on a continuous vertical timeline, with the current time overlaid so you can see at a glance where you are in the schedule.
 
 Timetable data is managed as a standalone JSON file.
