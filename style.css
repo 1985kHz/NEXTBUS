@@ -224,7 +224,7 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
 
 .tl-title { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
 
-.tl-scroll { overflow-x: hidden; overflow-y: auto; }
+.tl-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
 /* Timeline canvas */
 .tl {
@@ -334,11 +334,15 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   .clock-center { position: static; transform: none; order: -1; width: 100%; text-align: center; }
   .body { padding: 14px; }
   .next-grid { grid-template-columns: 1fr; }
-  .tl { padding-left: 140px; }
-  .tl-axis { left: 88px; }
-  .tick.minor { left: 80px; }
-  .tick.major, .tick.noon { left: 72px; right: 10px; }
-  .dot { left: 88px; }
-  .ldr { left: 88px !important; }
-  .tlabel.minor { left: 24px; }
+  .tl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tl { padding-left: 120px; min-width: 480px; }
+  .tl-axis { left: 80px; }
+  .tick.minor { left: 73px; }
+  .tick.major, .tick.noon { left: 64px; right: 8px; }
+  .dot { left: 80px; }
+  .ldr { left: 80px !important; }
+  .now-line { left: 64px; }
+  .tlabel.major { width: 66px; font-size: 11px; padding-right: 10px; }
+  .tlabel.minor { left: 46px; font-size: 9px; }
+  .lbl { font-size: 11px; padding: 1px 7px; }
 }

@@ -130,7 +130,12 @@ function renderTable(){
     nl.style.top=`${TOP+(nm-minM)*PPM}px`;timeline.appendChild(nl);
   }
   const keys=orderedKeys(all),laneX={};
-  keys.forEach((k,i)=>laneX[k]=200+i*155);
+  const tlAxis=timeline.querySelector('.tl-axis');
+  const axisX=tlAxis?tlAxis.offsetLeft:106;
+  const scrollW=timeline.parentElement.clientWidth||600;
+  const usable=scrollW-axisX-24;
+  const laneStep=Math.floor(usable/keys.length);
+  keys.forEach((k,i)=>laneX[k]=axisX+16+i*laneStep);
   const placed={};
   all.forEach(dep=>{
     const k=laneKey(dep),by=TOP+(dep.mins-minM)*PPM;
@@ -141,7 +146,7 @@ function renderTable(){
     const dot=document.createElement('div');dot.className='dot'+(isNext?' next':'');
     dot.style.top=`${by}px`;timeline.appendChild(dot);
     const ldr=document.createElement('div');ldr.className='ldr'+(isNext?' next':'');
-    ldr.style.top=`${by}px`;ldr.style.left='106px';ldr.style.width=`${lx-106}px`;
+    ldr.style.top=`${by}px`;ldr.style.left=`${axisX}px`;ldr.style.width=`${lx-axisX}px`;
     timeline.appendChild(ldr);
     const lbl=document.createElement('div');lbl.className='lbl'+(isNext?' next':'');
     lbl.style.top=`${y}px`;lbl.style.left=`${lx}px`;
@@ -183,3 +188,8 @@ async function loadData(){
   }catch{nextWrap.innerHTML='<div class="empty">データを読み込めませんでした</div>';}
 }
 render();loadData();setInterval(render,60000);
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(render,1);
+});
