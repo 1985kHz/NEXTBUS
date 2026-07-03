@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./favicon.png" alt="logo" width="80" />
+</p>
+
 <h1 align="center">NEXT BUS</h1>
 
 <p align="center">Know your next bus the moment you open the page.</p>
