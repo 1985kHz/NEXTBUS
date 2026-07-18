@@ -1,6 +1,7 @@
 const DATA_URL='./timetable-data.json';
 let BUS_DATA=null;
-const state={stop:'通信研究所',day:'weekday',mode:'next',theme:null};
+function getDefaultDay(){ const dow=new Date().getDay(); return (dow===0||dow===6)?'holiday':'weekday'; }
+const state={stop:'通信研究所',day:getDefaultDay(),mode:'next',theme:null};
 
 const stopSelect=document.getElementById('stopSelect');
 const nextWrap=document.getElementById('nextWrap');
@@ -26,7 +27,8 @@ function applyTheme(t){
     ?'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
     :'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 }
-applyTheme(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function getDefaultTheme(){ const h=new Date().getHours(); return (h>=6&&h<18)?'light':'dark'; }
+applyTheme(getDefaultTheme());
 themeBtn.addEventListener('click',()=>applyTheme(state.theme==='dark'?'light':'dark'));
 
 
@@ -44,15 +46,15 @@ function flatten(){
 function laneInfo(dep){
   const bay=(dep.note||'').includes('1番')?'①':(dep.note||'').includes('2番')?'②':'';
   if(state.stop==='YRP野比駅'){
-    if(dep.destination.includes('光の丘2番'))return{main:'丘2番',sub:bay,full:dep.destination};
-    if(dep.destination.includes('市民病院'))return{main:'病院',sub:bay,full:dep.destination};
-    return{main:'通研',sub:bay,full:dep.destination};
+    if(dep.destination.includes('光の丘2番'))return{main:'丘2番',suffix:'',sub:bay,full:dep.destination};
+    if(dep.destination.includes('市民病院'))return{main:'病院',suffix:'',sub:bay,full:dep.destination};
+    return{main:'通研',suffix:'',sub:bay,full:dep.destination};
   }
   if(state.stop==='通信研究所'){
-    if(dep.destination.includes('光の丘2番'))return{main:'丘2番',sub:bay||'①',full:dep.destination};
-    return{main:'みのり橋',sub:bay||'①',full:dep.destination};
+    if(dep.destination.includes('光の丘2番'))return{main:'丘2番',suffix:'経由',sub:bay||'①',full:dep.destination};
+    return{main:'みのり橋',suffix:'経由',sub:bay||'①',full:dep.destination};
   }
-  return{main:'YRP野比駅',sub:'',full:dep.destination};
+  return{main:'YRP野比駅',suffix:'',sub:'',full:dep.destination};
 }
 
 function laneKey(dep){const i=laneInfo(dep);return`${i.main}|${i.sub}`;}
@@ -79,10 +81,7 @@ function titleFor(){
 }
 
 
-function updateClock(){
-  const now=new Date();
-  clockDisplay.textContent=now.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
-}
+function updateClock(){ const now=new Date(); clockDisplay.textContent=now.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 
 
 function renderNext(){
@@ -151,7 +150,7 @@ function renderTable(){
     const lbl=document.createElement('div');lbl.className='lbl'+(isNext?' next':'');
     lbl.style.top=`${y}px`;lbl.style.left=`${lx}px`;
     lbl.title=`${dep.time} ${dep.destination}${dep.note?' '+dep.note:''}`;
-    lbl.innerHTML=`<span class="lbl-time">${dep.time}</span><span class="lbl-main">${info.main}</span>${info.sub?`<span class="lbl-sub">${info.sub}</span>`:''}`;
+    lbl.innerHTML=`<span class="lbl-time">${dep.time}</span><span class="lbl-main">${info.main}${info.suffix?`<span class="suffix">${info.suffix}</span>`:''}</span>${info.sub?`<span class="lbl-sub">${info.sub}</span>`:''}`;
     timeline.appendChild(lbl);
     if(y!==by){
       const br=document.createElement('div');br.className='ldr'+(isNext?' next':'');
@@ -188,6 +187,7 @@ async function loadData(){
   }catch{nextWrap.innerHTML='<div class="empty">データを読み込めませんでした</div>';}
 }
 render();loadData();setInterval(render,60000);
+setInterval(updateClock,1000);
 let resizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(resizeTimer);
