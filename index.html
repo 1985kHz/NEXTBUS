@@ -25,7 +25,7 @@
 
     <header class="header">
       <div></div>
-      <h1>NEXT BUS</h1>
+      <h1><img class="logo" src="./favicon.png" alt="" width="26" height="26">NEXT BUS</h1>
       <button class="icon-btn" data-theme-toggle aria-label="テーマ切替">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
@@ -35,6 +35,7 @@
 
     <div class="controls">
       <div class="controls-left">
+        <label class="stop-label" for="stopSelect">現在地</label>
         <div class="stop-wrap">
           <select id="stopSelect" aria-label="停留所"></select>
           <svg class="stop-caret" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
@@ -80,9 +81,7 @@
               <span>病院 = 横須賀市民病院</span>
               <span>通研 = 通信研究所</span>
               <span>丘2番 = 光の丘2番</span>
-            </div>
-            <div class="legend-row">
-              <span>① ② = のりば</span>
+              <span>YRP = YRPセンター</span>
             </div>
           </div>
         </div>

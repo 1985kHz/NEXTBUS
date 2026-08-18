@@ -43,34 +43,38 @@ function flatten(){
 }
 
 
+const ABBR={'通信研究所':'通研','横須賀市民病院':'病院','光の丘2番':'丘2番','YRPセンター':'YRP'};
+const abbr=s=>ABBR[s]||s;
+
+// destination は「行先（○○経由）」形式。行先と経由地に分解する
 function laneInfo(dep){
-  const bay=(dep.note||'').includes('1番')?'①':(dep.note||'').includes('2番')?'②':'';
-  if(state.stop==='YRP野比駅'){
-    if(dep.destination.includes('光の丘2番'))return{main:'丘2番',suffix:'',sub:bay,full:dep.destination};
-    if(dep.destination.includes('市民病院'))return{main:'病院',suffix:'',sub:bay,full:dep.destination};
-    return{main:'通研',suffix:'',sub:bay,full:dep.destination};
-  }
-  if(state.stop==='通信研究所'){
-    if(dep.destination.includes('光の丘2番'))return{main:'丘2番',suffix:'経由',sub:bay||'①',full:dep.destination};
-    return{main:'みのり橋',suffix:'経由',sub:bay||'①',full:dep.destination};
-  }
-  return{main:'YRP野比駅',suffix:'',sub:'',full:dep.destination};
+  const note=dep.note||'';
+  const bay=note.includes('1番')?'①':note.includes('2番')?'②':'';
+  const m=dep.destination.match(/^(.+?)（(.+?)）$/);
+  const via=m?m[2].replace(/経由$/,''):'';
+  return{
+    main:abbr(m?m[1]:dep.destination),
+    via:via==='直通'?'':abbr(via),
+    sub:bay,
+    full:dep.destination
+  };
 }
 
-function laneKey(dep){const i=laneInfo(dep);return`${i.main}|${i.sub}`;}
+function laneKey(dep){const i=laneInfo(dep);return`${i.main}|${i.via}|${i.sub}`;}
 
 
 function orderedKeys(all){
-  if(state.stop==='YRP野比駅'){
-    const order=['丘2番','病院','通研'],byMain={};
-    all.forEach(d=>{const i=laneInfo(d),k=laneKey(d);(byMain[i.main]||(byMain[i.main]=new Set())).add(k);});
-    const out=[];
-    order.forEach(m=>{(byMain[m]||[]).forEach(k=>{if(!out.includes(k))out.push(k);});});
-    return out;
-  }
-  const out=[];
-  all.forEach(d=>{const k=laneKey(d);if(!out.includes(k))out.push(k);});
-  return out;
+  const seen=new Map();
+  all.forEach(d=>{const k=laneKey(d);if(!seen.has(k))seen.set(k,laneInfo(d));});
+  const keys=[...seen.keys()];
+  if(state.stop!=='YRP野比駅')return keys;
+  // のりば順（①→②）を優先し、その中を行先順に並べる
+  const order=['丘2番','病院','通研'];
+  const rank=i=>[i.sub==='①'?0:i.sub==='②'?1:2,(order.indexOf(i.main)+1||99)];
+  return keys.sort((a,b)=>{
+    const x=rank(seen.get(a)),y=rank(seen.get(b));
+    return x[0]-y[0]||x[1]-y[1];
+  });
 }
 
 
@@ -110,9 +114,41 @@ function renderTable(){
   if(!all.length){timeline.innerHTML='<div class="empty">該当する時刻がありません。</div>';return;}
   const minM=Math.floor(all[0].mins/15)*15;
   const maxM=Math.ceil(all[all.length-1].mins/15)*15;
-  const TOP=20,PPM=2.8;
-  timeline.style.height=`${Math.max(400,(maxM-minM)*PPM+60)}px`;
+  const PPM=2.8,LANE_GAP=28;
   const ax=document.createElement('div');ax.className='tl-axis';timeline.appendChild(ax);
+  const axisX=ax.offsetLeft;
+  const scrollW=timeline.parentElement.clientWidth||600;
+  const usable=scrollW-axisX-24;
+  const keys=orderedKeys(all),laneX={};
+  const laneStep=Math.floor(usable/keys.length);
+  keys.forEach((k,i)=>laneX[k]=axisX+16+i*laneStep);
+
+  // ラベル幅を実測し、サブ列を隙間なく並べられるようにする
+  const probe=document.createElement('div');probe.className='lbl';
+  probe.style.visibility='hidden';probe.innerHTML='<span class="lbl-time">00:00</span>';
+  timeline.appendChild(probe);
+  const LBL_W=Math.ceil(probe.getBoundingClientRect().width)+2;
+  probe.remove();
+
+  // 見出し（のりば／経由／行先）。高さを実測して本文の開始位置に反映する
+  const bar=document.createElement('div');bar.className='tl-lanes';
+  const keyCol=document.createElement('span');keyCol.className='tl-lane-keys';
+  keyCol.style.width=`${axisX-6}px`;
+  keyCol.innerHTML=['のりば','経由','行先'].map(t=>`<span class="lh-row">${t}</span>`).join('');
+  bar.appendChild(keyCol);
+  keys.forEach(k=>{
+    const i=laneInfo(all.find(d=>laneKey(d)===k));
+    const h=document.createElement('span');h.className='tl-lane-head';
+    h.style.left=`${laneX[k]}px`;h.style.width=`${laneStep-6}px`;
+    h.innerHTML=[i.sub||'―',i.via||'―',i.main].map(t=>`<span class="lh-row">${t}</span>`).join('');
+    bar.appendChild(h);
+  });
+  timeline.insertBefore(bar,timeline.firstChild);
+  const headH=Math.ceil(Math.max(...[...bar.children].map(h=>h.getBoundingClientRect().height)));
+  bar.style.height=`${headH+10}px`;
+  const TOP=38+headH;
+
+  timeline.style.height=`${Math.max(400,TOP+(maxM-minM)*PPM+40)}px`;
   for(let t=minM;t<=maxM;t+=15){
     const y=TOP+(t-minM)*PPM,isHour=t%60===0,isNoon=t===720;
     const tick=document.createElement('div');
@@ -128,31 +164,31 @@ function renderTable(){
     const nl=document.createElement('div');nl.className='now-line';
     nl.style.top=`${TOP+(nm-minM)*PPM}px`;timeline.appendChild(nl);
   }
-  const keys=orderedKeys(all),laneX={};
-  const tlAxis=timeline.querySelector('.tl-axis');
-  const axisX=tlAxis?tlAxis.offsetLeft:106;
-  const scrollW=timeline.parentElement.clientWidth||600;
-  const usable=scrollW-axisX-24;
-  const laneStep=Math.floor(usable/keys.length);
-  keys.forEach((k,i)=>laneX[k]=axisX+16+i*laneStep);
+  // レーンに横幅の余裕があれば列を分け、混雑時間帯の時刻ズレを抑える
+  const subCols=Math.max(1,Math.floor(laneStep/LBL_W));
   const placed={};
   all.forEach(dep=>{
     const k=laneKey(dep),by=TOP+(dep.mins-minM)*PPM;
-    const stk=placed[k]||[];let y=by;
-    if(stk.length&&Math.abs(y-stk[stk.length-1])<22)y=stk[stk.length-1]+22;
-    stk.push(y);placed[k]=stk;
-    const lx=laneX[k],info=laneInfo(dep),isNext=dep.time===nextTime;
+    const cols=placed[k]||(placed[k]=new Array(subCols).fill(-Infinity));
+    let col=0,y=Infinity;
+    cols.forEach((last,c)=>{const cand=Math.max(by,last+LANE_GAP);if(cand<y){y=cand;col=c;}});
+    cols[col]=y;
+    const lx=laneX[k]+col*LBL_W,isNext=dep.time===nextTime;
     const dot=document.createElement('div');dot.className='dot'+(isNext?' next':'');
     dot.style.top=`${by}px`;timeline.appendChild(dot);
     const ldr=document.createElement('div');ldr.className='ldr'+(isNext?' next':'');
-    ldr.style.top=`${by}px`;ldr.style.left=`${axisX}px`;ldr.style.width=`${lx-axisX}px`;
+    ldr.style.top=`${by}px`;ldr.style.left=`${axisX}px`;
+    ldr.style.width=`${(y===by?lx:lx-12)-axisX}px`;
     timeline.appendChild(ldr);
     const lbl=document.createElement('div');lbl.className='lbl'+(isNext?' next':'');
     lbl.style.top=`${y}px`;lbl.style.left=`${lx}px`;
     lbl.title=`${dep.time} ${dep.destination}${dep.note?' '+dep.note:''}`;
-    lbl.innerHTML=`<span class="lbl-time">${dep.time}</span><span class="lbl-main">${info.main}${info.suffix?`<span class="suffix">${info.suffix}</span>`:''}</span>${info.sub?`<span class="lbl-sub">${info.sub}</span>`:''}`;
+    lbl.innerHTML=`<span class="lbl-time">${dep.time}</span>`;
     timeline.appendChild(lbl);
     if(y!==by){
+      const vr=document.createElement('div');vr.className='ldr-v'+(isNext?' next':'');
+      vr.style.top=`${by}px`;vr.style.left=`${lx-12}px`;vr.style.height=`${y-by}px`;
+      timeline.appendChild(vr);
       const br=document.createElement('div');br.className='ldr'+(isNext?' next':'');
       br.style.top=`${y}px`;br.style.left=`${lx-12}px`;br.style.width='12px';
       timeline.appendChild(br);
