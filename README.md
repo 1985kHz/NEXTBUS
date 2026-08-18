@@ -24,7 +24,7 @@ A lightweight bus timetable web app for the Keikyu Bus stops between YRP Nobi St
 
 **Timetable mode** — Plots all departures on a continuous vertical timeline, with the current time overlaid so you can see at a glance where you are in the schedule.
 
-Timetable data is managed as a standalone JSON file.
+Timetable data is managed as a standalone JSON file, current as of the timetable revised on August 21, 2026.
 
 ## License
 
