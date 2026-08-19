@@ -5,8 +5,8 @@ const state={stop:'通信研究所',day:getDefaultDay(),mode:'next',theme:null};
 
 const stopSelect=document.getElementById('stopSelect');
 const nextWrap=document.getElementById('nextWrap');
-const routeNotes=document.getElementById('routeNotes');
 const timeline=document.getElementById('timeline');
+const laneHeader=document.getElementById('laneHeader');
 const tableTitle=document.getElementById('tableTitle');
 const nextSection=document.getElementById('nextSection');
 const tableSection=document.getElementById('tableSection');
@@ -49,18 +49,18 @@ const abbr=s=>ABBR[s]||s;
 // destination は「行先（○○経由）」形式。行先と経由地に分解する
 function laneInfo(dep){
   const note=dep.note||'';
-  const bay=note.includes('1番')?'①':note.includes('2番')?'②':'';
+  const bay=note.includes('1番')?'1':note.includes('2番')?'2':'';
   const m=dep.destination.match(/^(.+?)（(.+?)）$/);
   const via=m?m[2].replace(/経由$/,''):'';
   return{
     main:abbr(m?m[1]:dep.destination),
     via:via==='直通'?'':abbr(via),
-    sub:bay,
+    bay:bay,
     full:dep.destination
   };
 }
 
-function laneKey(dep){const i=laneInfo(dep);return`${i.main}|${i.via}|${i.sub}`;}
+function laneKey(dep){const i=laneInfo(dep);return`${i.main}|${i.via}|${i.bay}`;}
 
 
 function orderedKeys(all){
@@ -70,7 +70,7 @@ function orderedKeys(all){
   if(state.stop!=='YRP野比駅')return keys;
   // のりば順（①→②）を優先し、その中を行先順に並べる
   const order=['丘2番','病院','通研'];
-  const rank=i=>[i.sub==='①'?0:i.sub==='②'?1:2,(order.indexOf(i.main)+1||99)];
+  const rank=i=>[i.bay==='1'?0:i.bay==='2'?1:2,(order.indexOf(i.main)+1||99)];
   return keys.sort((a,b)=>{
     const x=rank(seen.get(a)),y=rank(seen.get(b));
     return x[0]-y[0]||x[1]-y[1];
@@ -99,7 +99,7 @@ function renderNext(){
     const b=document.createElement('div');b.className='next-box'+(idx===0?' primary':'');
     b.innerHTML=`<div class="next-box-label">${['先発','次発','次々発'][idx]}</div>
       <div class="next-box-time">${bus.time}</div>
-      <div class="next-box-meta">${diff}分後 · ${info.sub||''}</div>
+      <div class="next-box-meta">${diff}分後${info.bay?` · ${info.bay}番のりば`:''}</div>
       <div class="next-box-dest">${info.full}</div>`;
     nextWrap.appendChild(b);
   });
@@ -130,8 +130,13 @@ function renderTable(){
   const LBL_W=Math.ceil(probe.getBoundingClientRect().width)+2;
   probe.remove();
 
-  // 見出し（のりば／経由／行先）。高さを実測して本文の開始位置に反映する
+  // 見出し（のりば／経由／行先）。スクロール領域の外に置くため、
+  // 縦スクロールバーは時刻の領域だけに現れる
+  laneHeader.innerHTML='';
   const bar=document.createElement('div');bar.className='tl-lanes';
+  // 見出しの中でも縦軸を切らさず上まで繋ぐ
+  const axisHead=document.createElement('span');axisHead.className='tl-axis-head';
+  axisHead.style.left=`${axisX}px`;bar.appendChild(axisHead);
   const keyCol=document.createElement('span');keyCol.className='tl-lane-keys';
   keyCol.style.width=`${axisX-6}px`;
   keyCol.innerHTML=['のりば','経由','行先'].map(t=>`<span class="lh-row">${t}</span>`).join('');
@@ -139,14 +144,20 @@ function renderTable(){
   keys.forEach(k=>{
     const i=laneInfo(all.find(d=>laneKey(d)===k));
     const h=document.createElement('span');h.className='tl-lane-head';
-    h.style.left=`${laneX[k]}px`;h.style.width=`${laneStep-6}px`;
-    h.innerHTML=[i.sub||'―',i.via||'―',i.main].map(t=>`<span class="lh-row">${t}</span>`).join('');
+    // 先頭列（メインの時刻列）の中心に合わせる。左右は隣のレーンとキー列を侵さない幅に収める
+    const center=laneX[k]+(LBL_W-2)/2;
+    h.dataset.lane=laneX[k];
+    const half=Math.min((laneStep-6)/2,center-(axisX+4),scrollW-8-center);
+    h.style.left=`${center-half}px`;h.style.width=`${half*2}px`;
+    h.innerHTML=`<span class="lh-row">${i.bay?i.bay+'番':'―'}</span>`
+      +`<span class="lh-row lh-via">${i.via||'―'}</span>`
+      +`<span class="lh-row">${i.main}</span>`;
     bar.appendChild(h);
   });
-  timeline.insertBefore(bar,timeline.firstChild);
-  const headH=Math.ceil(Math.max(...[...bar.children].map(h=>h.getBoundingClientRect().height)));
-  bar.style.height=`${headH+10}px`;
-  const TOP=38+headH;
+  laneHeader.appendChild(bar);
+  const headH=Math.ceil(Math.max(...[...bar.querySelectorAll('.tl-lane-head,.tl-lane-keys')].map(h=>h.getBoundingClientRect().height)));
+  bar.style.height=`${headH+16}px`;
+  const TOP=20;
 
   timeline.style.height=`${Math.max(400,TOP+(maxM-minM)*PPM+40)}px`;
   for(let t=minM;t<=maxM;t+=15){
@@ -205,14 +216,45 @@ function render(){
   showNext?renderNext():renderTable();
 }
 
+// 選択中を示す下敷き。切り替えるとスライドして移動する
+const thumbs=[...document.querySelectorAll('.pill-toggle')].map(group=>{
+  const thumb=document.createElement('span');
+  thumb.className='pill-thumb';
+  group.insertBefore(thumb,group.firstChild);
+  return{group,thumb};
+});
+
+function syncThumbs(animate=true){
+  thumbs.forEach(({group,thumb})=>{
+    const active=group.querySelector('button.active');
+    if(!active)return;
+    if(!animate)thumb.style.transition='none';
+    thumb.style.width=`${active.offsetWidth}px`;
+    thumb.style.height=`${active.offsetHeight}px`;
+    thumb.style.transform=`translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+    // 初期表示や画面幅の変化ではアニメーションさせずに位置だけ合わせる
+    if(!animate){void thumb.offsetWidth;thumb.style.transition='';}
+  });
+}
+
+syncThumbs(false);
+document.fonts?.ready.then(()=>syncThumbs(false));
+
+// 見出しはスクロール領域の外にあるため、横スクロールには手動で追従させる
+timeline.parentElement.addEventListener('scroll',e=>{
+  laneHeader.scrollLeft=e.target.scrollLeft;
+});
+
 stopSelect.addEventListener('change',e=>{state.stop=e.target.value;render();});
 document.querySelectorAll('[data-day]').forEach(b=>b.addEventListener('click',()=>{
   state.day=b.dataset.day;
-  document.querySelectorAll('[data-day]').forEach(x=>x.classList.toggle('active',x===b));render();
+  document.querySelectorAll('[data-day]').forEach(x=>x.classList.toggle('active',x===b));
+  syncThumbs();render();
 }));
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
   state.mode=b.dataset.mode;
-  document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));render();
+  document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));
+  syncThumbs();render();
 }));
 
 
@@ -227,5 +269,5 @@ setInterval(updateClock,1000);
 let resizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(resizeTimer);
-  resizeTimer=setTimeout(render,1);
+  resizeTimer=setTimeout(()=>{render();syncThumbs(false);},1);
 });

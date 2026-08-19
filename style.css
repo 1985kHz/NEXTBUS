@@ -9,10 +9,25 @@
   --text-muted:     #6b6b68;
   --text-faint:     #ababA6;
   --text-inv:       #f9f9f7;
-  --accent:         #1a1a18;
   --accent-sub:     rgba(26, 26, 24, .06);
-  --primary:        #0d7b82;
-  --primary-soft:   #d6eaeb;
+  --primary:        #1a73a8;
+  --primary-soft:   #d7e8f7;
+  /* ガラス質ハイライト: 淡く透けるロゴブルーに、縁の反射と鏡面光を重ねる */
+  --glass-text:   #0d3561;
+  --glass-tint:   linear-gradient(155deg, rgba(124, 197, 232, .56) 0%, rgba(133, 165, 209, .5) 55%, rgba(21, 87, 126, .44) 100%);
+  --glass-blur:   blur(22px) saturate(200%) brightness(1.06);
+  --glass-border: rgba(255, 255, 255, .6);
+  /* 縁の反射と、内部にたまる光。外側には影を落とさない */
+  --glass-edge:   inset 0 1px 0 rgba(255, 255, 255, .9),
+                  inset 0 -1px 0 rgba(255, 255, 255, .5),
+                  inset 0 0 0 .5px rgba(255, 255, 255, .35),
+                  inset 0 -9px 14px -8px rgba(255, 255, 255, .6),
+                  inset 0 9px 16px -10px rgba(124, 197, 232, .55);
+  --glass-sheen:  linear-gradient(120deg, rgba(255, 255, 255, .3) 0%, rgba(255, 255, 255, .04) 44%, rgba(255, 255, 255, 0) 62%),
+                  linear-gradient(to bottom, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, .06) 26%, rgba(255, 255, 255, 0) 52%);
+  --glass-lift:   0 1px 1px rgba(13, 53, 97, .08);
+  /* 時刻表パネルの見出し帯と凡例帯。時刻の領域と区別するための淡いグレー */
+  --band-bg:        #ebebe7;
   --r-sm:   8px;
   --r-md:  12px;
   --r-lg:  18px;
@@ -34,10 +49,22 @@
   --text-muted:     #8a8a84;
   --text-faint:     #55554f;
   --text-inv:       #111110;
-  --accent:         #e8e8e4;
   --accent-sub:     rgba(232, 232, 228, .07);
-  --primary:        #4d9fa6;
-  --primary-soft:   #1d3335;
+  --primary:        #7cc5e8;
+  --primary-soft:   #16293c;
+  --glass-text:   #eef7fd;
+  --glass-tint:   linear-gradient(155deg, rgba(124, 197, 232, .34) 0%, rgba(133, 165, 209, .3) 55%, rgba(21, 87, 126, .34) 100%);
+  --glass-blur:   blur(22px) saturate(190%) brightness(1.02);
+  --glass-border: rgba(255, 255, 255, .28);
+  --glass-edge:   inset 0 1px 0 rgba(255, 255, 255, .55),
+                  inset 0 -1px 0 rgba(255, 255, 255, .18),
+                  inset 0 0 0 .5px rgba(255, 255, 255, .16),
+                  inset 0 -9px 14px -8px rgba(255, 255, 255, .22),
+                  inset 0 9px 16px -10px rgba(124, 197, 232, .35);
+  --glass-sheen:  linear-gradient(120deg, rgba(255, 255, 255, .13) 0%, rgba(255, 255, 255, 0) 46%),
+                  linear-gradient(to bottom, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, .02) 24%, rgba(255, 255, 255, 0) 48%);
+  --glass-lift:   0 1px 1px rgba(0, 0, 0, .18);
+  --band-bg:        #1c1c1b;
   --sh:        0 2px 8px rgba(0, 0, 0, .22), 0 0 0 1px var(--border);
   --sh-raised: 0 8px 28px rgba(0, 0, 0, .32), 0 0 0 1px var(--border);
 }
@@ -169,6 +196,7 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
 
 /* Pill toggle */
 .pill-toggle {
+  position: relative;
   display: flex;
   align-items: center;
   background: var(--surface-2);
@@ -188,11 +216,46 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   transition: background .15s, color .15s, box-shadow .15s;
 }
 
-.pill-toggle button.active {
-  background: var(--accent);
-  color: var(--text-inv);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+/* ── ガラス質ハイライト（選択中のピル・次の便） ─────────────────────────────── */
+/* 淡く透けるロゴブルーに背景のぼかしを重ね、縁の反射でガラスの厚みを表現する。
+   塗りを濃くせず文字色を濃紺（暗いテーマでは白）にすることで、
+   透明度を上げるほど文字が読みやすくなる組み合わせにしている。 */
+.pill-thumb,
+.lbl.next {
+  background: var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-edge), var(--glass-lift);
 }
+
+/* 斜めの光の筋と上端の鏡面光。文字が並ぶ中央から下では透明になる */
+.pill-thumb::after,
+.lbl.next::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--glass-sheen);
+}
+
+.lbl.next { color: var(--glass-text); }
+
+/* 選択中の下敷き。切り替えるとスライドして移動する */
+.pill-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: var(--r-full);
+  pointer-events: none;
+  z-index: 0;
+  transition: transform .34s cubic-bezier(.34, .9, .3, 1),
+              width .34s cubic-bezier(.34, .9, .3, 1);
+}
+
+.pill-toggle button { position: relative; z-index: 1; }
+.pill-toggle button.active { color: var(--glass-text); font-weight: 700; }
 
 /* ── 直近カード ────────────────────────────────────────────────────────────── */
 .next-card {
@@ -225,8 +288,6 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
 .next-box-meta  { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 .next-box-dest  { font-size: 11px; color: var(--text-faint); margin-top: 3px; }
 
-.fixed-note { margin-top: 14px; font-size: 11px; color: var(--text-faint); }
-
 /* ── 時刻表パネル ──────────────────────────────────────────────────────────── */
 .tl-panel {
   background: var(--surface-raised);
@@ -241,6 +302,7 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   align-items: center;
   padding: 14px 20px 12px;
   border-bottom: 1px solid var(--border);
+  background: var(--band-bg);
 }
 
 .tl-title { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
@@ -252,7 +314,17 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   max-height: calc(100vh - 380px);
   max-height: calc(100dvh - 380px);
   min-height: 260px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-med) transparent;
 }
+
+.tl-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.tl-scroll::-webkit-scrollbar-track { background: transparent; }
+.tl-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-med);
+  border-radius: var(--r-full);
+}
+.tl-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
 /* Timeline canvas */
 .tl {
@@ -327,34 +399,42 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   font-size: 12px;
   line-height: 1.4;
 }
-.lbl.next  { background: var(--accent); color: var(--text-inv); border-color: transparent; }
 .lbl-time  { font-variant-numeric: tabular-nums; font-weight: 500; }
-.lbl-sub   { opacity: .65; font-size: 11px; }
 
-/* Sticky lane headers — 行先はレーン見出しへ、ラベルは時刻のみ */
-.tl-lanes {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  min-height: 26px;
-  margin-left: calc(-1 * var(--tl-pl));
-  margin-right: -16px;
-  background: var(--surface-raised);
+/* 行先はレーン見出しに集約し、ラベルは時刻のみ。見出しはスクロールしても上部に固定する */
+/* 見出し帯はスクロール領域の外側。縦スクロールバーが重ならない */
+.tl-lanes-wrap {
+  overflow: hidden;
+  background: var(--band-bg);
   border-bottom: 1px solid var(--border);
+}
+
+.tl-lanes {
+  position: relative;
+  min-height: 26px;
+}
+
+.tl-axis-head {
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  width: 1px;
+  background: var(--border-med);
 }
 
 .tl-lane-head {
   position: absolute;
-  top: 5px;
+  top: 8px;
   font-size: 10px;
   color: var(--text-muted);
+  text-align: center;
 }
 
 /* 「のりば／経由／行先」のキーは左の余白に1回だけ置き、各レーンは値のみ */
 .tl-lane-keys {
   position: absolute;
   left: 0;
-  top: 5px;
+  top: 8px;
   text-align: right;
   font-size: 9px;
   color: var(--text-muted);
@@ -372,6 +452,9 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   text-overflow: ellipsis;
 }
 
+/* 経由は補助情報なので控えめに */
+.lh-via { font-weight: 400; font-size: 9px; }
+
 /* Legend */
 .legend {
   display: flex;
@@ -379,8 +462,9 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   gap: 10px;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
+  background: var(--band-bg);
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .legend-dot {
@@ -420,19 +504,27 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   .lbl { font-size: 11px; padding: 1px 7px; }
 }
 
-/* ── iPhone Chrome向け 時刻表タイムライン最適化 ─────────────────── */
+/* ── タイムラインの寸法（スマートフォンの画面幅を基準に調整） ──────────────── */
 .tl {
   --tl-pl: 128px;
-  padding: 18px 16px 18px var(--tl-pl);
+  /* 上は 0。見出し帯をパネルのタイトルに隙間なく接続させる */
+  padding: 0 16px 18px var(--tl-pl);
   min-height: 420px;
 }
 .tl-axis { left: 78px; }
 .tick.minor { left: 70px; width: 6px; }
-.tick.major, .tick.noon { left: 8px; right: 12px; }
-.dot { left: 78px; width: 9px; height: 9px; }
+/* 横線は時刻ラベルの右端より右から引く */
+.tick.major, .tick.noon { left: 66px; right: 12px; }
+.dot { left: 78px; width: 6px; height: 6px; border-width: 1.5px; }
 .ldr { left: 78px !important; }
-.now-line { left: 8px; right: 8px; }
-.now-line::before { left: -20px; font-size: 9px; }
+.now-line { left: 66px; right: 8px; }
+.now-line::before {
+  left: -22px;
+  font-size: 9px;
+  background: var(--surface-raised);
+  padding: 0 2px;
+  border-radius: 3px;
+}
 
 .tlabel.major { left: 0; width: 62px; font-size: 11px; padding-right: 8px; }
 /* 15/30/45分は軸のすぐ左に置く */
@@ -443,11 +535,6 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   padding: 4px 10px;
   gap: 4px;
   line-height: 1.5;
-}
-.lbl-sub {
-  font-size: 9px;
-  min-width: 0;
-  text-align: left;
 }
 
 .tl-scroll { -webkit-overflow-scrolling: touch; }
@@ -460,10 +547,6 @@ button, select { font: inherit; color: inherit; cursor: pointer; border: none; b
   .ldr { left: 72px !important; }
   .tlabel.major { width: 56px; font-size: 10px; }
   .tlabel.minor { left: 50px; width: 20px; font-size: 9px; padding-right: 4px; }
-}
-
-.suffix {
-  font-size: 8.5px;
-  opacity: 0.7;
-  margin-left: 1px;
+  .tick.major, .tick.noon { left: 60px; }
+  .now-line { left: 60px; }
 }
